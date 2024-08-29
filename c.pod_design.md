@@ -9,7 +9,7 @@
 
 [Cron Jobs](#cron-jobs)
 
-## Labels and annotations
+## Labels and Annotations
 kubernetes.io > Documentation > Concepts > Overview > Working with Kubernetes Objects > [Labels and Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors)
 
 ### Create 3 pods with names nginx1,nginx2,nginx3. All of them should have the label app=v1
@@ -121,6 +121,71 @@ kubectl label po -l app app-
 </p>
 </details>
 
+### Annotate pods nginx1, nginx2, nginx3 with "description='my description'" value
+
+<details><summary>show</summary>
+<p>
+
+
+```bash
+kubectl annotate po nginx1 nginx2 nginx3 description='my description'
+
+#or
+
+kubectl annotate po nginx{1..3} description='my description'
+```
+
+</p>
+</details>
+
+### Check the annotations for pod nginx1
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl annotate pod nginx1 --list
+
+# or
+
+kubectl describe po nginx1 | grep -i 'annotations'
+
+# or
+
+kubectl get po nginx1 -o custom-columns=Name:metadata.name,ANNOTATIONS:metadata.annotations.description
+```
+
+As an alternative to using `| grep` you can use jsonPath like `kubectl get po nginx1 -o jsonpath='{.metadata.annotations}{"\n"}'`
+
+</p>
+</details>
+
+### Remove the annotations for these three pods
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl annotate po nginx{1..3} description- owner-
+```
+
+</p>
+</details>
+
+### Remove these pods to have a clean state in your cluster
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl delete po nginx{1..3}
+```
+
+</p>
+</details>
+
+## Pod Placement
+
 ### Create a pod that will be deployed to a Node that has the label 'accelerator=nvidia-tesla-p100'
 
 <details><summary>show</summary>
@@ -179,64 +244,66 @@ spec:
 </p>
 </details>
 
-### Annotate pods nginx1, nginx2, nginx3 with "description='my description'" value
+### Taint a node with key `tier` and value `frontend` with the effect `NoSchedule`. Then, create a pod that tolerates this taint.
 
 <details><summary>show</summary>
 <p>
 
+Taint a node:
 
 ```bash
-kubectl annotate po nginx1 nginx2 nginx3 description='my description'
+kubectl taint node node1 tier=frontend:NoSchedule # key=value:Effect
+kubectl describe node node1 # view the taints on a node
+```
 
-#or
-
-kubectl annotate po nginx{1..3} description='my description'
+And to tolerate the taint:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  tolerations:
+  - key: "tier"
+    operator: "Equal"
+    value: "frontend"
+    effect: "NoSchedule"
 ```
 
 </p>
 </details>
 
-### Check the annotations for pod nginx1
+### Create a pod that will be placed on node `controlplane`. Use nodeSelector and tolerations.
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-kubectl annotate pod nginx1 --list
-
-# or
-
-kubectl describe po nginx1 | grep -i 'annotations'
-
-# or
-
-kubectl get po nginx1 -o custom-columns=Name:metadata.name,ANNOTATIONS:metadata.annotations.description
+vi pod.yaml
 ```
 
-As an alternative to using `| grep` you can use jsonPath like `kubectl get po nginx1 -o jsonpath='{.metadata.annotations}{"\n"}'`
-
-</p>
-</details>
-
-### Remove the annotations for these three pods
-
-<details><summary>show</summary>
-<p>
-
-```bash
-kubectl annotate po nginx{1..3} description-
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  nodeSelector:
+    kubernetes.io/hostname: controlplane
+  tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
 ```
 
-</p>
-</details>
-
-### Remove these pods to have a clean state in your cluster
-
-<details><summary>show</summary>
-<p>
-
 ```bash
-kubectl delete po nginx{1..3}
+kubectl create -f pod.yaml
 ```
 
 </p>
@@ -931,9 +998,9 @@ kubectl create cronjob busybox --image=busybox --schedule="*/1 * * * *" -- /bin/
 <p>
 
 ```bash
-kubectl get po   # copy the container just created
-kubectl logs <container> # you will see the date and message 
-kubectl delete cj busybox --force #cj stands for cronjob and --force to delete immediately 
+kubectl get po # copy the ID of the pod whose container was just created
+kubectl logs <busybox-***> # you will see the date and message 
+kubectl delete cj busybox # cj stands for cronjob
 ```
 
 </p>
